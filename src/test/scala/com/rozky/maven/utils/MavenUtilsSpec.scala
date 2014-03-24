@@ -6,19 +6,34 @@ import org.apache.maven.model.Dependency
 
 class MavenUtilsSpec extends FlatSpec with Matchers {
 
-    val utils = new MavenUtils
-
-    it should "get declared dependencies from remote pom.xml" in {
+    it should "get declared dependencies from a remote pom.xml without child modules" in {
         System.setProperty("jsse.enableSNIExtension", "false")
 
         // given
-        val remotePom = new URL("https://raw.githubusercontent.com/rozky/atp-tennis/master/pom.xml")
+        val remotePOM = new URL("https://raw.githubusercontent.com/rozky/atp-tennis/master/pom.xml")
 
         // when
-        val declaredDependencies: Seq[Dependency] = utils.getDeclaredDependencies(remotePom)
+        val declaredDependencies: Seq[Dependency] = MavenUtils.getProjectDeclaredDependencies(remotePOM)
 
         // then
         declaredDependencies.map(_.toString) should contain(
             TestDependency("com.rozky.common", "http-client", "${rozky.http.client.version}").toDependency.toString)
+    }
+
+    it should "get declared dependencies from a remote pom.xml with child modules" in {
+        System.setProperty("jsse.enableSNIExtension", "false")
+
+        // given
+        val remotePOM = new URL("https://raw.githubusercontent.com/rozky/bcomments/master/pom.xml")
+
+        // when
+        val declaredDependencies: Seq[Dependency] = MavenUtils.getProjectDeclaredDependencies(remotePOM)
+
+        // then dependencies defined directly in the pom should be returned
+        declaredDependencies.map(_.toString) should contain(
+            TestDependency("org.scala-lang", "scala-library", null).toDependency.toString)
+
+        declaredDependencies.map(_.toString) should contain(
+            TestDependency("javax.servlet", "servlet-api", "3.0-alpha-1").toDependency.toString)
     }
 }
