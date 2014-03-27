@@ -1,8 +1,9 @@
-package com.rozky.maven.utils
+package it.com.rozky.maven.utils
 
 import org.scalatest.{Matchers, FlatSpec}
 import java.net.URL
 import org.apache.maven.model.Dependency
+import com.rozky.maven.utils.{TestDep, PomUtils}
 
 class PomUtilsSpec extends FlatSpec with Matchers {
 
@@ -17,6 +18,6 @@ class PomUtilsSpec extends FlatSpec with Matchers {
 
         // then
         declaredDependencies.map(_.toString) should contain(
-            TestDependency("com.rozky.common", "http-client", "${rozky.http.client.version}").toDependency.toString)
+            TestDep("com.rozky.common", "http-client", "${rozky.http.client.version}").toDependency.toString)
     }
 }
