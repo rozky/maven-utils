@@ -1,49 +1,60 @@
 package com.rozky.maven.utils
 
+import org.jgrapht.DirectedGraph
+import org.jgrapht.graph.SimpleDirectedGraph
+import com.rozky.maven.utils.MvnProjectGraph.Edge
+import org.jgrapht.alg.DijkstraShortestPath
+import java.util
+import scala.collection.JavaConversions._
+
+// todo - detect cyclying dependencies
 case class MvnProjectGraph(projects: Seq[MvnProject]) {
     require(projects != null, "projects can't be null")
 
-    val nodes: Map[MvnProject, GraphNode] = projects.map { project =>
-        (project, GraphNode(project, project.filterDependants(projects)))
-    }.toMap
+    private val graph: DirectedGraph[MvnProject, Edge] = new SimpleDirectedGraph[MvnProject, Edge](classOf[Edge])
+
+    buildGraph()
 
     def getDirectChildrenOf(project: MvnProject): Seq[MvnProject] = {
-        val node: Option[GraphNode] = nodes.get(project)
-        if (node.isDefined) {
-            node.get.childProjects
-        } else {
-            throw new IllegalArgumentException("unknown project: " + project)
-        }
+      graph.outgoingEdgesOf(project).map(edge => edge.target).toSeq
     }
 
     def getChildrenOf(project: MvnProject): Seq[MvnProject] = {
-        val node: Option[GraphNode] = nodes.get(project)
-        if (node.isDefined) {
-            node.get.childProjects ++ node.get.childProjects.map(child => getChildrenOf(child)).flatten
-        } else {
-            throw new IllegalArgumentException("unknown project: " + project)
-        }
+      val children: Seq[MvnProject] = getDirectChildrenOf(project)
+      children ++ children.map(child => getChildrenOf(child)).flatten
     }
 
-    def getNode(project: MvnProject): GraphNode = {
-        val node: Option[GraphNode] = nodes.get(project)
-        if (node.isDefined) {
-            node.get
-        } else {
-            throw new IllegalArgumentException("unknown project: " + project)
-        }
+    def findPath(source: MvnProject, target: MvnProject): util.List[Edge] = {
+        DijkstraShortestPath.findPathBetween(graph, source, target)
+    }
+    
+    def isParent(parent: MvnProject, child: MvnProject): Boolean = {
+        def path = findPath(parent, child)
+        path != null && !path.isEmpty
     }
 
-    case class GraphNode(project: MvnProject, childProjects: Seq[MvnProject] = List()) {
-        require(childProjects != null, "child project can't be null")
+    def print() {
+        def toString(edge: Edge): String = s"[ ${edge.source.id} -> ${edge.target.id} ]"
 
-        // todo - should not call getNode from wrapping type
-        def isParentOf(project: MvnProject): Boolean = {
-            if (childProjects.contains(project)) {
-                true
-            } else {
-                childProjects.map(p => getNode(p).isParentOf(project)).exists(_.equals(true))
+        println(s"Graph { ${graph.edgeSet().map(toString).mkString(", ")} }")
+    }
+
+    private def buildGraph() {
+        projects.foreach { project =>
+            graph.addVertex(project)
+            project.filterDependants(projects).foreach { dependentProject =>
+                addEdge(project, dependentProject)
             }
         }
     }
+    
+    private def addEdge(source: MvnProject, target: MvnProject) {
+        graph.addVertex(source)
+        graph.addVertex(target)
+        graph.addEdge(source, target, Edge(source, target))
+    } 
+}
+
+object MvnProjectGraph {
+    case class Edge(source: MvnProject, target: MvnProject)
 }

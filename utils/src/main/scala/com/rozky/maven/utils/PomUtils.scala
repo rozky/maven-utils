@@ -12,6 +12,7 @@ object PomUtils {
     val pomReader = new MavenXpp3Reader()
 
     def parse(url: URL): Model = {
+        println("parsing: " + url.toString)
         val is: InputStream = url.openStream()
 
         try {
